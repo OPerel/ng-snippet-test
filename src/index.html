@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script type="text/javascript">
+      (function (convizit, scriptUrl, scriptStr, window, document, config, siteToken) {
+
+        var eventStr = 'event';
+        var eventsStr = eventStr + 's';
+        var underscoreStr = '__';
+        var onceStr = 'once';
+        var underscoreOnceStr = underscoreStr + onceStr + underscoreStr;
+        var underscoreEventsStr = underscoreStr + eventsStr + underscoreStr;
+        var timestampStr = underscoreStr + 'timestamp' + underscoreStr;
+        var addEventListenerStr = 'addEventListener';
+        var lengthStr = 'length';
+        var jQueryStr = 'jQuery';
+        var mousedownStr = 'mousedown';
+        var pushStr = 'push';
+        var MAX_LENGTH = 1000;
+
+        var getTimestamp = function () {
+          return new Date().getTime();
+        }
+
+        var clickEventHandler = function (event) {
+          if (window[convizit][eventsStr]) window[convizit][eventsStr][pushStr](event);
+        };
+
+        var waitTillJQueryExist = function (interval, timeout, cb) {
+          if (window[jQueryStr]) return cb();
+          if (timeout <= 0) return null;
+
+          setTimeout(function () {
+            waitTillJQueryExist(interval, timeout - interval, cb);
+          }, interval);
+        };
+
+        var funcWrapper = function (funcToRun, originFunc) {
+          return function () {
+            funcToRun(arguments[0], this);
+            originFunc.apply(this, arguments);
+          }
+        }
+
+        var pushEvent = function (element, event) {
+          if (!element[underscoreEventsStr]) {
+            Object.defineProperty(element, underscoreEventsStr, { value: [] });
+          }
+          element[underscoreEventsStr][pushStr](event);
+        }
+
+        var registerFunctionalElement = function (event, element) {
+          if (element && event) {
+            pushEvent(element, event);
+          }
+        };
+
+        try {
+          if (window[convizit]) throw new Error('twice');
+          window[convizit] = window[convizit] || [];
+          window[convizit].siteToken = siteToken;
+          window[convizit].config = config;
+
+          window[convizit].start = getTimestamp();
+
+
+          var localeDateString = (new Date()).toLocaleDateString();
+          var forceSSL = config.forceSSL || "https:" === document.location.protocol;
+
+          var s1 = document.createElement(scriptStr);
+          s1.type = "text/java" + scriptStr;
+          s1.async = true;
+          s1.src = "http" + (forceSSL ? "s" : "") + scriptUrl;
+          var s2 = document.getElementsByTagName(scriptStr)[0];
+          s2.parentNode.insertBefore(s1, s2);
+
+          window[convizit][eventsStr] = [];
+          Object.defineProperty(window[convizit][eventsStr], "setCB", {
+            value: function (cb) {
+              return this.cb = cb;
+            }
+          });
+          Object.defineProperty(window[convizit][eventsStr], pushStr, {
+            value: function () {
+              for (var i = 0, n = this[lengthStr], l = arguments[lengthStr]; i < l; i++, n++) {
+                arguments[i][timestampStr] = getTimestamp();
+                if (this.cb) {
+                  this.cb(arguments[i]);
+                } else {
+                  this[n] = arguments[i];
+                }
+              }
+              for (var j = 0, len = this[lengthStr] - MAX_LENGTH; j < len; j++) {
+                this.shift();
+              }
+              return this[lengthStr];
+            }
+          });
+
+          var originalWindowAddEventListener;
+          var originalEventTargetAddEventListener;
+          var overrideAddEventListener = function () {
+            originalWindowAddEventListener = window[addEventListenerStr];
+            originalEventTargetAddEventListener = EventTarget.prototype[addEventListenerStr];
+            window[addEventListenerStr] = funcWrapper(registerFunctionalElement, originalWindowAddEventListener);
+            EventTarget.prototype[addEventListenerStr] = funcWrapper(registerFunctionalElement, originalEventTargetAddEventListener);
+          };
+
+          var originalJqueryAddEvent;
+          var overrideJqueryAddEvent = function (cHandler) {
+            if (!window[jQueryStr] || !window[jQueryStr][eventStr]) return;
+
+            originalJqueryAddEvent = window[jQueryStr][eventStr].add;
+            window[jQueryStr][eventStr].add = function (elem, types, handler, data, selector) {
+              if (!selector) {
+                return originalJqueryAddEvent.call(this, elem, types, handler, data, selector);
+              }
+
+              if (typeof handler !== 'function') {
+                return originalJqueryAddEvent.call(this, elem, types, handler, data, selector);
+              }
+
+              var newHandler = function () {
+
+                if (this) {
+
+                  pushEvent(this, types);
+
+                  if (!this[underscoreOnceStr] && types !== mousedownStr) {
+                    this[underscoreOnceStr] = true;
+                    cHandler.apply(this, arguments);
+                  }
+                }
+                return handler.apply(this, arguments);
+              };
+
+              return originalJqueryAddEvent.call(this, elem, types, newHandler, data, selector);
+            };
+          };
+
+          document[addEventListenerStr](mousedownStr, clickEventHandler, true);
+          overrideAddEventListener();
+          waitTillJQueryExist(25, 4000, function () {
+            overrideJqueryAddEvent(clickEventHandler);
+          });
+
+          var pushFunc = function (obj, fn) {
+            return function () {
+              if (obj[lengthStr] >= MAX_LENGTH) {
+                obj.shift();
+              }
+              obj[pushStr]([fn].concat(Array.prototype.slice.call(arguments, 0)).concat(getTimestamp()))
+            }
+          };
+
+          var methods = [
+            'set',
+            'get',
+            'track',
+            'onEvent',
+            'identify',
+          ];
+
+          for (var j = 0; j < methods[lengthStr]; j++) {
+            window[convizit][methods[j]] = pushFunc(window[convizit], methods[j])
+          }
+
+        } catch (error) {
+          window[convizit].err = error;
+        }
+
+      })('convizit', '://cdn-test.ctesting.xyz/convizit.js', 'script', window, document, {}, '6a8591790874e2e87917d1fb46ff3c20');
+      // })('convizit', '://localhost:8080?id=', 'script', window, document, { forceSSL: 1 }, 'ffbc0e049050ff21911865360025b059');
+      // })('convizit', '://cdn.ctesting.xyz/convizit.js?id=', 'script', window, document, {}, '6a8591790874e2e87917d1fb46ff3c20');
+    </script>
+    <meta charset="utf-8" />
+    <title>Angular Getting Started</title>
+    <base href="/" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+      <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>
